@@ -113,6 +113,8 @@ public struct SearchResult<ItemType: JSONDecodable>: JSONDecodable {
 public enum JSONDecodeError: ErrorType {
     case MissingRequiredKey(String)
     case UnexpectedType(key: String, expected: Any.Type, actual: Any.Type)
+    case CannotParseURL(key: String, value: String)
+    case CannotParseDate(key: String, value: String)
 }
 
 private func getValue<T>(JSON: JSONObject, key: String) throws -> T {
@@ -123,4 +125,126 @@ private func getValue<T>(JSON: JSONObject, key: String) throws -> T {
         throw JSONDecodeError.UnexpectedType(key: key, expected: T.self, actual: value.dynamicType)
     }
     return typedValue
+}
+
+private func getOptionalValue<T>(JSON: JSONObject, key: String) throws -> T? {
+    guard let value = JSON[key] else {
+        return nil
+    }
+    if value is NSNull {
+        return nil
+    }
+    guard let typedValue = value as? T else {
+        throw JSONDecodeError.UnexpectedType(key: key, expected: T.self, actual: value.dynamicType)
+    }
+    return typedValue
+}
+
+private func getURL(JSON: JSONObject, key: String) throws -> NSURL {
+    let URLString: String = try getValue(JSON, key: key)
+    guard let URL = NSURL(string: URLString) else {
+        throw JSONDecodeError.CannotParseURL(key: key, value: URLString)
+    }
+    return URL
+}
+
+private func getOptionalURL(JSON: JSONObject, key: String) throws -> NSURL? {
+    guard let URLString: String = try getOptionalValue(JSON, key: key) else { return nil }
+    guard let URL = NSURL(string: URLString) else {
+        throw JSONDecodeError.CannotParseURL(key: key, value: URLString)
+    }
+    return URL
+}
+
+private func getDate(JSON: JSONObject, key: String) throws -> NSDate {
+    let dateString: String = try getValue(JSON, key: key)
+    guard let date = dateFormatter.dateFromString(dateString) else {
+        throw JSONDecodeError.CannotParseDate(key: key, value: dateString)
+    }
+    return date
+}
+
+private func getOptionalDate(JSON: JSONObject, key: String) throws -> NSDate? {
+    guard let dateString: String = try getOptionalValue(JSON, key: key) else { return nil }
+    guard let date = dateFormatter.dateFromString(dateString) else {
+        throw JSONDecodeError.CannotParseDate(key: key, value: dateString)
+    }
+    return date
+}
+
+private let dateFormatter: NSDateFormatter = {
+    let formatter = NSDateFormatter()
+    formatter.calendar = NSCalendar(calendarIdentifier: NSCalendarIdentifierGregorian)
+    formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss'Z'"
+    return formatter
+}()
+
+public struct Repository: JSONDecodable {
+    public let id: Int
+    public let name: String
+    public let fullName: String
+    public let isPrivate: Bool
+    public let HTMLURL: NSURL
+    public let description: String?
+    public let fork: Bool
+    public let URL: NSURL
+    public let createdAt: NSDate
+    public let updatedAt: NSDate
+    public let pushedAt: NSDate?
+    public let homepage: String?
+    public let size: Int
+    public let stargazersCount: Int
+    public let watchersCount: Int
+    public let language: String?
+    public let forksCount: Int
+    public let openIssuesCount: Int
+    public let masterBranch: String?
+    public let defaultBranch: String
+    public let score: Double
+    public let owner: User
+    
+    public init(JSON: JSONObject) throws {
+        self.id = try getValue(JSON, key: "id")
+        self.name = try getValue(JSON, key: "name")
+        self.fullName = try getValue(JSON, key: "full_name")
+        self.isPrivate = try getValue(JSON, key: "private")
+        self.HTMLURL = try getValue(JSON, key: "html_url")
+        self.description = try getOptionalValue(JSON, key: "description")
+        self.fork = try getValue(JSON, key: "fork")
+        self.URL = try getURL(JSON, key: "url")
+        self.createdAt = try getDate(JSON, key: "created_at")
+        self.updatedAt = try getDate(JSON, key: "updated_at")
+        self.pushedAt = try getOptionalDate(JSON, key: "pushed_at")
+        self.homepage = try getOptionalValue(JSON, key: "homepage")
+        self.size = try getValue(JSON, key: "size")
+        self.stargazersCount = try getValue(JSON, key: "stargazers_count")
+        self.watchersCount = try getValue(JSON, key: "watchers_count")
+        self.language = try getOptionalValue(JSON, key: "language")
+        self.forksCount = try getValue(JSON, key: "forks_count")
+        self.openIssuesCount = try getValue(JSON, key: "open_issues_count")
+        self.masterBranch = try getOptionalValue(JSON, key: "master_branch")
+        self.defaultBranch = try getValue(JSON, key: "default_branch")
+        self.score = try getValue(JSON, key: "score")
+        self.owner = try User(JSON: getValue(JSON, key: "owner") as JSONObject)
+    }
+}
+
+public struct User: JSONDecodable {
+    public let login: String
+    public let id: Int
+    public let avatarURL: NSURL
+    public let gravatarID: String
+    public let URL: NSURL
+    public let receivedEventsURL: NSURL
+    public let type: String
+    
+    public init(JSON: JSONObject) throws {
+        self.login = try getValue(JSON, key: "login")
+        self.id = try getValue(JSON, key: "id")
+        self.avatarURL = try getURL(JSON, key: "avatar_url")
+        self.gravatarID = try getValue(JSON, key: "gravatar_id")
+        self.URL = try getURL(JSON, key: "url")
+        self.receivedEventsURL = try getURL(JSON, key: "received_events_url")
+        self.type = try getValue(JSON, key: "type")
+    }
 }
