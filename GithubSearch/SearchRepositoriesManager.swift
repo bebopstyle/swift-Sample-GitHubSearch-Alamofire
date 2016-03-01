@@ -32,6 +32,19 @@ class SearchRepositoriesManager {
             return false
         }
         networking = true
-        github.request(GitHubAPI.
+        github.request(GitHubAPI.SearchRepositories(query: query, page: reload ? 1 : page)) { (task, response, error) in
+            if let response = response {
+                if reload {
+                    self.results.removeAll()
+                    self.page = 1
+                }
+                self.results.appendContentsOf(response.items)
+                self.completed = response.totalCount <= self.results.count
+                self.page++
+            }
+            self.networking = false
+            completion(error: error)
+        }
+        return true
     }
 }

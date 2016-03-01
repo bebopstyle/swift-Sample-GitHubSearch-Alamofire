@@ -64,7 +64,32 @@ public class GitHubAPI {
         case .Get:
                 HTTPSessionManager
                     .request(.GET, baseUrl)
-                    .responseJSON { request in
+                    .responseJSON { response in
+                        if response.result.isSuccess {
+                            if let JSON = response.result.value as? JSONObject {
+                                handler(task: task, response: nil, error: nil)
+                            } else {
+                                handler(task: task, response: nil, error: error)
+                            }
+                        } else {
+                            if let errorData = response.result.error.userInfo[
+                        }
+                        
+                        
+                        (_, _, response, error) in
+                        if let JSON = response as? JSONObject {
+                            do {
+                                let response = try Endpoint.ResponseType(JSON: JSON)
+                                handler(task: task, response: response, error: nil)
+                            } catch {
+                                handler(task: task, response: nil, error: error)
+                            }
+                        } else {
+                            handler(task: task, response: nil, error: nil)
+                        }
+                        
+                        
+                        request in
                         if request.result.isSuccess {
                             
                         } else {
@@ -75,25 +100,25 @@ public class GitHubAPI {
             }
         }
     }
-}
 
-public struct SearchRepositories: APIEndpoint {
-    public var path = "search/repositories"
-    public var method = HTTPMethod.Get
-    public var parameters: Parameters {
-        return [
-            "q" : query,
-            "page" : page,
-        ]
-    }
-    public typealias ResponseType = SearchResult<Repository>
+    public struct SearchRepositories: APIEndpoint {
+        public var path = "search/repositories"
+        public var method = HTTPMethod.Get
+        public var parameters: Parameters {
+            return [
+                "q" : query,
+                "page" : page,
+            ]
+        }
+        public typealias ResponseType = SearchResult<Repository>
     
-    public let query: String
-    public let page: Int
+        public let query: String
+        public let page: Int
     
-    public init(query: String, page: Int) {
-        self.query = query
-        self.page = page
+        public init(query: String, page: Int) {
+            self.query = query
+            self.page = page
+        }
     }
 }
 
