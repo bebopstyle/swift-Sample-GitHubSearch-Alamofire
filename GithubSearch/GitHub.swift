@@ -67,37 +67,27 @@ public class GitHubAPI {
                     .responseJSON { response in
                         if response.result.isSuccess {
                             if let JSON = response.result.value as? JSONObject {
-                                handler(task: task, response: nil, error: nil)
+                                do {
+                                    let response = try Endpoint.ResponseType(JSON: JSON)
+                                    handler(task: task, response: response, error: nil)
+                                } else {
+                                    handler(task: task, response: nil, error: error)
+                                }
                             } else {
-                                handler(task: task, response: nil, error: error)
+                                handler(task: task, response: nil, error: nil)
                             }
                         } else {
-                            if let errorData = response.result.error.userInfo[
-                        }
-                        
-                        
-                        (_, _, response, error) in
-                        if let JSON = response as? JSONObject {
-                            do {
-                                let response = try Endpoint.ResponseType(JSON: JSON)
-                                handler(task: task, response: response, error: nil)
-                            } catch {
-                                handler(task: task, response: nil, error: error)
+                            let error = response.result.error
+                            if let errorData = error.userInfo as? NSData
+                            let errorDescription = NSString(data: errorData, encoding: NSUTF8StringEncoding) {
+                                var userInfo = error.userInfo
+                                userInfo[NSLocalizedFailureReasonErrorKey] = errorDescription
+                                error = NSError(domain: error.domain, code: error.code, userInfo: userInfo)
                             }
-                        } else {
-                            handler(task: task, response: nil, error: nil)
+                            handler(task:task, response: nil, error: error)
                         }
                         
-                        
-                        request in
-                        if request.result.isSuccess {
-                            
-                        } else {
-                            
-                        }
-                        
-                        
-            }
+                }
         }
     }
 
