@@ -38,8 +38,10 @@ public struct Parameters: DictionaryLiteralConvertible {
             dictionary[key] = value
         }
     }
-    
-    
+}
+
+public enum APIError: ErrorType {
+    case UnexpectedResponse
 }
 
 public class GitHubAPI {
@@ -58,36 +60,34 @@ public class GitHubAPI {
         
     }
     
-    public func request<Endpoint: APIEndpoint>(endpoint: Endpoint, handler: (task: NSURLSessionDataTask, response: Endpoint.Type?, error: ErrorType?) -> Void) {
-
+    public func request<Endpoint: APIEndpoint>(endpoint: Endpoint, handler: (response: Endpoint.ResponseType?, error: ErrorType?) -> Void) {
         switch endpoint.method {
         case .Get:
-                HTTPSessionManager
-                    .request(.GET, baseUrl)
-                    .responseJSON { response in
-                        if response.result.isSuccess {
-                            if let JSON = response.result.value as? JSONObject {
-                                do {
-                                    let response = try Endpoint.ResponseType(JSON: JSON)
-                                    handler(task: task, response: response, error: nil)
-                                } else {
-                                    handler(task: task, response: nil, error: error)
-                                }
-                            } else {
-                                handler(task: task, response: nil, error: nil)
+            HTTPSessionManager
+                .request(.GET, baseUrl)
+                .responseJSON { response in
+                    switch response.result {
+                    case .Success(let value):
+                        if let JSON = value as? JSONObject {
+                            do {
+                                let response = try Endpoint.ResponseType(JSON: JSON)
+                                handler(response: response, error: nil)
+                            } catch {
+                                handler(response: nil, error: error)
                             }
                         } else {
-                            let error = response.result.error
-                            if let errorData = error.userInfo as? NSData
+                            handler(response: nil, error: APIError.UnexpectedResponse)
+                        }
+                    case .Failure(var error):
+                        if let errorData = error.userInfo[NSLocalizedFailureReasonErrorKey] as? NSData,
                             let errorDescription = NSString(data: errorData, encoding: NSUTF8StringEncoding) {
                                 var userInfo = error.userInfo
                                 userInfo[NSLocalizedFailureReasonErrorKey] = errorDescription
                                 error = NSError(domain: error.domain, code: error.code, userInfo: userInfo)
-                            }
-                            handler(task:task, response: nil, error: error)
                         }
-                        
-                }
+                        handler(response: nil, error: error)
+                    }
+            }
         }
     }
 
