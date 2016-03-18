@@ -9,7 +9,12 @@
 import UIKit
 
 class SearchViewController: UITableViewController {
+    
+    var appContext:
 
+    
+    var searchManager: SearchRepositoriesManager?
+    
     var detailViewController: DetailViewController? = nil
     var objects = [AnyObject]()
 
@@ -64,14 +69,14 @@ class SearchViewController: UITableViewController {
     }
 
     override func tableView(tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return objects.count
+        return searchManager?.results.count ?? 0
     }
 
     override func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCellWithIdentifier("Cell", forIndexPath: indexPath)
-
-        let object = objects[indexPath.row] as! NSDate
-        cell.textLabel!.text = object.description
+        let cell = tableView.dequeueReusableCellWithIdentifier("RepositoryCell", forIndexPath: indexPath)
+        let repository = searchManager!.results[indexPath.row]
+        cell.textLabel?.text = repository.fullName
+        cell.detailTextLabel?.text = repository.description
         return cell
     }
 
@@ -92,3 +97,18 @@ class SearchViewController: UITableViewController {
 
 }
 
+extension SearchViewController: UISearchBarDelegate {
+    func searchBarTextDidEndEditing(searchBar: UISearchBar) {
+        guard let searchText = searchBar.text else { return }
+        guard let searchManager = SearchRepositoriesManager(github: appContext.github, query: searchText) else { return }
+        self.searchManager = searchManager
+        searchManager.search(true) { [weak self] (error) in
+            if let error = error {
+                print(error)
+            } else {
+                self?.tableView.reloadData()
+                self?.searchController.active = false
+            }
+        }
+    }
+}

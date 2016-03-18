@@ -32,7 +32,7 @@ class SearchRepositoriesManager {
             return false
         }
         networking = true
-        github.request(GitHubAPI.SearchRepositories(query: query, page: reload ? 1 : page)) { (task, response, error) in
+        github.request(GitHubAPI.SearchRepositories(query: query, page: reload ? 1 : page)) { (response, error) in
             if let response = response {
                 if reload {
                     self.results.removeAll()
